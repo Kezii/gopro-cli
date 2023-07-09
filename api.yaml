@@ -1,0 +1,410 @@
+openapi: 3.0.0
+info:
+  version: 1.0.0
+  title: gopro API
+servers:
+  - url: http://10.5.5.9:8080
+paths:
+  /gopro/camera/keep_alive:
+    get:
+      summary: Keep alive
+      operationId: keepAlive
+      responses:
+        '200':
+          description: OK
+
+
+  
+  /gopro/camera/get_date_time:
+    get:
+      summary: Get date time
+      operationId: getDateTime
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DateTimeResponse'
+  /gopro/media/list:
+    get:
+      summary: Get media list
+      operationId: getMediaList
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaResponse'
+
+  /gopro/camera/state:
+    get:
+      summary: Get camera state
+      operationId: getCameraState
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CameraStateResponse'
+
+  /gopro/camera/control/wired_usb:
+    get:
+      parameters:
+        - in: query
+          name: p
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 1
+          description: Parameter to control the wired USB
+      responses:
+        '200':
+          description: OK
+
+  /gopro/webcam/start:
+    get:
+      summary: Start webcam
+      operationId: startWebcam
+      responses:
+        '200':
+          description: OK
+  /gopro/webcam/stop:
+    get:
+      summary: Stop webcam
+      operationId: stopWebcam
+      responses:
+        '200':
+          description: OK
+  /gopro/webcam/preview:
+    get:
+      summary: Start webcam preview
+      operationId: startWebcamPreview
+      responses:
+        '200':
+          description: OK
+  /gopro/webcam/version:
+    get:
+      summary: Get webcam version
+      operationId: getWebcamVersion
+      responses:
+        '200':
+          description: OK
+
+
+components:
+  schemas:
+
+    MediaItem:
+      type: object
+      required:
+        - n
+        - cre
+        - mod
+        - s
+      properties:
+        n:
+          type: string
+          description: Media filename
+        cre:
+          type: string
+          description: Created time (seconds since epoch)
+        mod:
+          type: string
+          description: Last modified time (seconds since epoch)
+        s:
+          type: string
+          description: Size of (group) media in bytes
+        glrv:
+          type: string
+          description: Low resolution video file size
+        ls:
+          type: string
+          description: ID of last member of a group (for grouped media items)
+        g:
+          type: string
+          description: Group ID (if grouped media item)
+        b:
+          type: string
+          description: ID of first member of a group (for grouped media items)
+        l:
+          type: string
+          description: ID of last member of a group (for grouped media items)
+        t:
+          type: string
+          description: Group type (for grouped media items) (b -> burst, c -> continuous shot, n -> night lapse, t -> time lapse)
+        m:
+          type: array
+          description: List of missing/deleted group member IDs (for grouped media items)
+          items:
+            type: string
+    MediaDirectory:
+      type: object
+      required:
+        - d
+        - fs
+      properties:
+        d:
+          type: string
+          description: Directory name
+        fs:
+          type: array
+          description: File system. Contains listing of media items in directory
+          items:
+            $ref: '#/components/schemas/MediaItem'
+    MediaResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Media list session identifier
+        media:
+          type: array
+          description: Contains media info for for each directory (e.g. 100GOPRO/, 101GOPRO/, …)
+          items:
+            $ref: '#/components/schemas/MediaDirectory'
+
+    DateTimeResponse:
+      type: object
+      properties:
+        date:
+          type: string
+          example: "2023_07_04"
+        time:
+          type: string
+          example: "00_39_11"
+        tzone:
+          type: integer
+          example: 120
+        dst:
+          type: integer
+          example: 1
+
+    CameraStateResponse:
+      type: object
+      required:
+          - status
+      properties:
+        status:
+          type: object
+          required:
+            - "1"
+            - "2"
+            - "6"
+            - "8"
+            - "9"
+            - "10"
+            - "11"
+            - "13"
+            - "17"
+            - "19"
+            - "20"
+            - "21"
+            - "22"
+            - "23"
+            - "24"
+            - "25"
+            - "26"
+            - "27"
+            - "28"
+            - "29"
+            - "30"
+            - "31"
+            - "32"
+            - "33"
+            - "34"
+            - "35"
+            - "36"
+            - "37"
+            - "38"
+            - "39"
+            - "41"
+            - "70"
+
+
+          properties:
+            1:
+              type: integer
+              description: Is the system’s internal battery present?
+              minimum: 0
+              maximum: 1
+            2:
+              type: integer
+              description: Rough approximation of internal battery level in bars.
+              minimum: 0
+              maximum: 3
+            6:
+              type: integer
+              description: Is the system currently overheating?
+              minimum: 0
+              maximum: 1
+            8:
+              type: integer
+              description: Is the camera busy?
+              minimum: 0
+              maximum: 1
+            9:
+              type: integer
+              description: Is Quick Capture feature enabled?
+              minimum: 0
+              maximum: 1
+            10:
+              type: integer
+              description: Is the system encoding right now?
+              minimum: 0
+              maximum: 1
+            11:
+              type: integer
+              description: Is LCD lock active?
+              minimum: 0
+              maximum: 1
+            13:
+              type: integer
+              description: When encoding video, this is the duration (seconds) of the video so far; 0 otherwise.
+            17:
+              type: integer
+              description: Are Wireless Connections enabled?
+              minimum: 0
+              maximum: 1
+            19:
+              type: integer
+              description: The pairing state of the camera.
+              minimum: 0
+              maximum: 4
+            20:
+              type: integer
+              description: The last type of pairing that the camera was engaged in.
+              minimum: 0
+              maximum: 3
+            21:
+              type: integer
+              description: Time (milliseconds) since boot of last successful pairing complete action.
+            22:
+              type: integer
+              description: State of current scan for WiFi Access Points. Appears to only change for CAH-related scans.
+              # oneOf:
+              #   - title: Never started
+              #     const: 0
+              #   - title: Started
+              #     const: 1
+              #   - title: Aborted
+              #     const: 2
+              #   - title: Canceled
+              #     const: 3
+              #   - title: Completed
+              #     const: 4
+            23:
+              type: integer
+              description: The time, in milliseconds since boot that the WiFi Access Point scan completed.
+            24:
+              type: integer
+              description: WiFi AP provisioning state.
+              # oneOf:
+              #   - title: Never started
+              #     const: 0
+              #   - title: Started
+              #     const: 1
+              #   - title: Aborted
+              #     const: 2
+              #   - title: Canceled
+              #     const: 3
+              #   - title: Completed
+              #     const: 4
+            26:
+              type: integer
+              description: Wireless remote control version.
+            27:
+              type: integer
+              description: Is a wireless remote control connected?
+              minimum: 0
+              maximum: 1
+            28:
+              type: integer
+              description: Wireless Pairing State.
+            29:
+              type: string
+              description: Provisioned WIFI AP SSID. On BLE connection, value is big-endian byte-encoded int.
+            30:
+              type: string
+              description: Camera’s WIFI SSID. On BLE connection, value is big-endian byte-encoded int.
+            31:
+              type: integer
+              description: The number of wireless devices connected to the camera.
+            32:
+              type: integer
+              description: Is Preview Stream enabled?
+              minimum: 0
+              maximum: 1
+            33:
+              type: integer
+              description: Primary Storage Status.
+              # oneOf:
+              #   - title: Unknown
+              #     const: -1
+              #   - title: OK
+              #     const: 0
+              #   - title: SD Card Full
+              #     const: 1
+              #   - title: SD Card Removed
+              #     const: 2
+              #   - title: SD Card Format Error
+              #     const: 3
+              #   - title: SD Card Busy
+              #     const: 4
+              #   - title: SD Card Swapped
+              #     const: 8
+            34:
+              type: integer
+              description: How many photos can be taken before sdcard is full
+            35:
+              type: integer
+              description: How many minutes of video can be captured with current settings before sdcard is full
+            36:
+              type: integer
+              description: How many group photos can be taken with current settings before sdcard is full
+            37:
+              type: integer
+              description: Total number of group videos on sdcard
+            38:
+              type: integer
+              description: Total MB of space on the sdcard.
+            39:
+              type: integer
+              description: Number of photos on sdcard.
+            40:
+              type: integer
+              description: Number of videos on sdcard.
+            41:
+              type: integer
+              description: OTA status.
+              # oneOf:
+              #   - title: Idle
+              #     const: 0
+              #   - title: Downloading
+              #     const: 1
+              #   - title: Verifying
+              #     const: 2
+              #   - title: Download Failed
+              #     const: 3
+              #   - title: Verify Failed
+              #     const: 4
+              #   - title: Ready
+              #     const: 5
+              #   - title: GoPro App Downloading
+              #     const: 6
+              #   - title: GoPro App Verifying
+              #     const: 7
+              #   - title: GoPro App Download Failed
+              #     const: 8
+              #   - title: GoPro App Verify Failed
+              #     const: 9
+              #   - title: GoPro App Ready
+              #     const: 10
+            70:
+              type: integer
+              description: Internal battery level (percent)
+              minimum: 0
+              maximum: 100
