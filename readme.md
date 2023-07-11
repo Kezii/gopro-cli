@@ -1,5 +1,9 @@
 # gopro-cli
 
+cli tools that downloads files from a gopro camera into a specified folder
+
+it's supposed to handle all the edge cases and be a direct replacement for the gopro app and gopro cloud subscription
+
 ## synopsis
 ```
 Usage: gopro-cli [OPTIONS] --download-path <PATH>
