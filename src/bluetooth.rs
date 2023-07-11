@@ -1,7 +1,8 @@
-use btleplug::api::{Central, Manager as _, Peripheral as _, ScanFilter, WriteType};
+use btleplug::api::{
+    Central, Characteristic, Manager as _, Peripheral as _, ScanFilter, WriteType,
+};
 use btleplug::platform::{Adapter, Manager, Peripheral};
 use std::error::Error;
-use std::str::FromStr;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -66,6 +67,20 @@ Service UUID b5f90090-aa8d-11e3-9046-0002a5d5c51b, primary: true
 
  */
 
+fn gopro_uuid(char: u32) -> Uuid {
+    Uuid::parse_str(&format!("b5f9{:04}-aa8d-11e3-9046-0002a5d5c51b", char)).unwrap()
+}
+
+fn find_characteristic(
+    chars: &std::collections::BTreeSet<Characteristic>,
+    uuid: Uuid,
+) -> &Characteristic {
+    chars
+        .iter()
+        .find(|c| c.uuid == uuid)
+        .expect("Unable to find characterics")
+}
+
 pub struct GoproBluetooth {
     gopro: Peripheral,
 }
@@ -106,25 +121,11 @@ impl GoproBluetooth {
     pub async fn start_ap(&self) -> Result<(), Box<dyn Error>> {
         // find the characteristic we want
         let chars = self.gopro.characteristics();
-        let wifi_ssid_char = chars
-            .iter()
-            .find(|c| c.uuid == Uuid::from_str("b5f90002-aa8d-11e3-9046-0002a5d5c51b").unwrap())
-            .expect("Unable to find characterics");
 
-        let wifi_pass_char = chars
-            .iter()
-            .find(|c| c.uuid == Uuid::from_str("b5f90003-aa8d-11e3-9046-0002a5d5c51b").unwrap())
-            .expect("Unable to find characterics");
-
-        let wifi_ap_power_char = chars
-            .iter()
-            .find(|c| c.uuid == Uuid::from_str("b5f90004-aa8d-11e3-9046-0002a5d5c51b").unwrap())
-            .expect("Unable to find characterics");
-
-        let wifi_api_state_char = chars
-            .iter()
-            .find(|c| c.uuid == Uuid::from_str("b5f90005-aa8d-11e3-9046-0002a5d5c51b").unwrap())
-            .expect("Unable to find characterics");
+        let wifi_ssid_char = find_characteristic(&chars, gopro_uuid(2));
+        let wifi_pass_char = find_characteristic(&chars, gopro_uuid(3));
+        let wifi_ap_power_char = find_characteristic(&chars, gopro_uuid(4));
+        let wifi_api_state_char = find_characteristic(&chars, gopro_uuid(5));
 
         info!(
             "SSID: {:?}",
@@ -169,10 +170,8 @@ impl GoproBluetooth {
     pub async fn shutdown_camera(&self) -> Result<(), Box<dyn Error>> {
         info!("Putting camera to sleep...");
         let chars = self.gopro.characteristics();
-        let commands_char = chars
-            .iter()
-            .find(|c| c.uuid == Uuid::from_str("b5f90072-aa8d-11e3-9046-0002a5d5c51b").unwrap())
-            .expect("Unable to find characterics");
+
+        let commands_char = find_characteristic(&chars, gopro_uuid(72));
 
         self.gopro
             .write(commands_char, &[0x01, 0x05], WriteType::WithoutResponse)
