@@ -1,7 +1,4 @@
-
-use btleplug::api::{
-    Central, Manager as _, Peripheral as _, ScanFilter, WriteType,
-};
+use btleplug::api::{Central, Manager as _, Peripheral as _, ScanFilter, WriteType};
 use btleplug::platform::{Adapter, Manager, Peripheral};
 use std::error::Error;
 use std::str::FromStr;
@@ -10,8 +7,7 @@ use uuid::Uuid;
 
 use tokio::time;
 
-use log::{info};
-
+use log::info;
 
 async fn find_gopro(central: &Adapter) -> Option<Peripheral> {
     for p in central.peripherals().await.unwrap() {
@@ -70,98 +66,118 @@ Service UUID b5f90090-aa8d-11e3-9046-0002a5d5c51b, primary: true
 
  */
 
-pub async fn start_ap() -> Result<(), Box<dyn Error>> {
-    //pretty_env_logger::init();
+pub struct GoproBluetooth {
+    gopro: Peripheral,
+}
 
-    let manager = Manager::new().await.unwrap();
+impl GoproBluetooth {
+    pub async fn new() -> Result<Self, Box<dyn Error>> {
+        let manager = Manager::new().await.unwrap();
 
-    // get the first bluetooth adapter
-    let central = manager
-        .adapters()
-        .await
-        .expect("Unable to fetch adapter list.")
-        .into_iter()
-        .next()
-        .expect("Unable to find adapters.");
+        // get the first bluetooth adapter
+        let adapter = manager
+            .adapters()
+            .await
+            .expect("Unable to fetch adapter list.")
+            .into_iter()
+            .next()
+            .expect("Unable to find adapters.");
 
-    // start scanning for devices
-    info!("Scanning...");
-    central.start_scan(ScanFilter::default()).await?;
-    // instead of waiting, you can use central.events() to get a stream which will
-    // notify you of new devices, for an example of that see examples/event_driven_discovery.rs
-    time::sleep(Duration::from_secs(2)).await;
+        // start scanning for devices
+        info!("Scanning...");
+        adapter.start_scan(ScanFilter::default()).await?;
 
-    // find the device we're interested in
-    let gopro = find_gopro(&central).await.expect("No gopro found");
+        // todo: event driven discovery
+        time::sleep(Duration::from_secs(2)).await;
 
-    info!("Found.");
+        let gopro = find_gopro(&adapter).await.expect("No gopro found");
 
-    // connect to the device
-    info!("Connecting...");
-    gopro.connect().await?;
+        info!("Found.");
 
-    // discover services and characteristics
-    gopro.discover_services().await?;
-    info!("Services discovered");
+        info!("Connecting...");
+        gopro.connect().await?;
 
-    // find the characteristic we want
-    let chars = gopro.characteristics();
-    // let wifi_ssid_char = chars
-    //     .iter()
-    //     .find(|c| c.uuid == Uuid::from_str("b5f90002-aa8d-11e3-9046-0002a5d5c51b").unwrap())
-    //     .expect("Unable to find characterics");
+        gopro.discover_services().await?;
+        info!("Services discovered");
 
-    // let wifi_pass_char = chars
-    //     .iter()
-    //     .find(|c| c.uuid == Uuid::from_str("b5f90003-aa8d-11e3-9046-0002a5d5c51b").unwrap())
-    //     .expect("Unable to find characterics");
-
-    let wifi_ap_power_char = chars
-        .iter()
-        .find(|c| c.uuid == Uuid::from_str("b5f90004-aa8d-11e3-9046-0002a5d5c51b").unwrap())
-        .expect("Unable to find characterics");
-
-    let wifi_api_state_char = chars
-        .iter()
-        .find(|c| c.uuid == Uuid::from_str("b5f90005-aa8d-11e3-9046-0002a5d5c51b").unwrap())
-        .expect("Unable to find characterics");
-
-    // info!(
-    //     "SSID: {:?}",
-    //     String::from_utf8_lossy(&gopro.read(wifi_ssid_char).await?)
-    // );
-
-    // info!(
-    //     "Password: {:?}",
-    //     String::from_utf8_lossy(&gopro.read(wifi_pass_char).await?)
-    // );
-
-    let state = gopro.read(wifi_api_state_char).await?;
-    let state = *state.first().unwrap_or(&0);
-
-    if state != 0x00 {
-        info!("AP is already enabled");
-        return Ok(());
+        Ok(Self { gopro })
     }
 
-    info!("AP State: {:?}", state);
+    pub async fn start_ap(&self) -> Result<(), Box<dyn Error>> {
+        // find the characteristic we want
+        let chars = self.gopro.characteristics();
+        let wifi_ssid_char = chars
+            .iter()
+            .find(|c| c.uuid == Uuid::from_str("b5f90002-aa8d-11e3-9046-0002a5d5c51b").unwrap())
+            .expect("Unable to find characterics");
 
-    info!("Enabling access point...");
-    gopro
-        .write(wifi_ap_power_char, &[0x01], WriteType::WithoutResponse)
-        .await?;
+        let wifi_pass_char = chars
+            .iter()
+            .find(|c| c.uuid == Uuid::from_str("b5f90003-aa8d-11e3-9046-0002a5d5c51b").unwrap())
+            .expect("Unable to find characterics");
 
-    loop {
-        let state = gopro.read(wifi_api_state_char).await?;
+        let wifi_ap_power_char = chars
+            .iter()
+            .find(|c| c.uuid == Uuid::from_str("b5f90004-aa8d-11e3-9046-0002a5d5c51b").unwrap())
+            .expect("Unable to find characterics");
+
+        let wifi_api_state_char = chars
+            .iter()
+            .find(|c| c.uuid == Uuid::from_str("b5f90005-aa8d-11e3-9046-0002a5d5c51b").unwrap())
+            .expect("Unable to find characterics");
+
+        info!(
+            "SSID: {:?}",
+            String::from_utf8_lossy(&self.gopro.read(wifi_ssid_char).await?)
+        );
+
+        info!(
+            "Password: {:?}",
+            String::from_utf8_lossy(&self.gopro.read(wifi_pass_char).await?)
+        );
+
+        let state = self.gopro.read(wifi_api_state_char).await?;
         let state = *state.first().unwrap_or(&0);
 
         if state != 0x00 {
-            info!("AP enabled");
+            info!("AP is already enabled");
             return Ok(());
         }
 
         info!("AP State: {:?}", state);
 
-        time::sleep(Duration::from_secs(4)).await;
+        info!("Enabling access point...");
+        self.gopro
+            .write(wifi_ap_power_char, &[0x01], WriteType::WithoutResponse)
+            .await?;
+
+        loop {
+            let state = self.gopro.read(wifi_api_state_char).await?;
+            let state = *state.first().unwrap_or(&0);
+
+            if state != 0x00 {
+                info!("AP enabled");
+                return Ok(());
+            }
+
+            info!("AP State: {:?}", state);
+
+            time::sleep(Duration::from_secs(4)).await;
+        }
+    }
+
+    pub async fn shutdown_camera(&self) -> Result<(), Box<dyn Error>> {
+        info!("Putting camera to sleep...");
+        let chars = self.gopro.characteristics();
+        let commands_char = chars
+            .iter()
+            .find(|c| c.uuid == Uuid::from_str("b5f90072-aa8d-11e3-9046-0002a5d5c51b").unwrap())
+            .expect("Unable to find characterics");
+
+        self.gopro
+            .write(commands_char, &[0x01, 0x05], WriteType::WithoutResponse)
+            .await?;
+
+        Ok(())
     }
 }

@@ -41,7 +41,7 @@ struct Cli {
     bluetooth: bool,
 }
 
-async fn check_if_camera_online(configuration: &Configuration) -> bool{
+async fn check_if_camera_online(configuration: &Configuration) -> bool {
     let ka = openapi::apis::default_api::keep_alive(configuration);
 
     (timeout(Duration::from_secs(1), ka).await).is_ok()
@@ -68,20 +68,20 @@ async fn main() -> Result<(), Error> {
         ..Default::default()
     };
 
+    let mut bluetooth = None;
 
     if cli.bluetooth {
-        if check_if_camera_online(&configuration).await {
-            warn!("Camera is already online, skipping bluetooth setup");
-        } else {
-            bluetooth::start_ap().await.unwrap();
-        }
+        bluetooth = Some(bluetooth::GoproBluetooth::new().await.unwrap());
     }
 
-
+    if check_if_camera_online(&configuration).await {
+        warn!("Camera is already online, skipping AP start");
+    } else if let Some(bluetooth) = &bluetooth {
+        bluetooth.start_ap().await.unwrap();
+    }
 
     for i in 0..10 {
-
-        if ! check_if_camera_online(&configuration).await {
+        if !check_if_camera_online(&configuration).await {
             warn!("Can't connect to the camera, retrying in 5 seconds");
             tokio::time::sleep(Duration::from_secs(5)).await;
         } else {
@@ -153,6 +153,10 @@ async fn main() -> Result<(), Error> {
             error!("Failed to download file: {}", path);
             error!("Error: {}", e);
         }
+    }
+
+    if let Some(bluetooth) = &bluetooth {
+        bluetooth.shutdown_camera().await.unwrap();
     }
 
     Ok(())
