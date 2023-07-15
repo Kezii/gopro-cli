@@ -93,7 +93,7 @@ async fn main() -> Result<(), Error> {
         }
     }
 
-    print_camera_status(&configuration).await;
+    //print_camera_status(&configuration).await;
 
     let response = openapi::apis::default_api::get_media_list(&configuration)
         .await
@@ -108,9 +108,9 @@ async fn main() -> Result<(), Error> {
         info!("Files: ");
         for file in &directory.fs {
             let path = format!("{}/videos/DCIM/{}/{}", &cli.gopro_host, directory.d, file.n);
-            let size = i32::from_str(file.s.as_str()).unwrap();
+            let size = usize::from_str(file.s.as_str()).unwrap();
             info!("└ {} - {:4} MB", file.n, size / 1024 / 1024,);
-            total_size += size as usize;
+            total_size += size;
             file_paths.push((path, size, file.n.clone()));
         }
     }
@@ -123,7 +123,7 @@ async fn main() -> Result<(), Error> {
     let mut downloaded_size: usize = 0;
     for file in &file_paths {
         counter += 1;
-        downloaded_size += file.1 as usize;
+        downloaded_size += file.1;
         let path = &file.0;
 
         let path_in_disk = cli.download_path.join(&file.2);
