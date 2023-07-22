@@ -93,7 +93,7 @@ async fn main() -> Result<(), Error> {
         }
     }
 
-    //print_camera_status(&configuration).await;
+    print_camera_status(&configuration).await;
 
     let response = openapi::apis::default_api::get_media_list(&configuration)
         .await
@@ -141,6 +141,10 @@ async fn main() -> Result<(), Error> {
             continue;
         }
 
+        openapi::apis::default_api::keep_alive(&configuration)
+            .await
+            .ok();
+
         let success = download_file(
             &client,
             path,
@@ -163,12 +167,14 @@ async fn main() -> Result<(), Error> {
 }
 
 async fn print_camera_status(configuration: &Configuration) {
-    let status = openapi::apis::default_api::get_camera_state(configuration)
-        .await
-        .unwrap();
+    let status = openapi::apis::default_api::get_camera_state(configuration).await;
 
-    info!("battery present: {}", status.status.param_1);
-    info!("battery level: {}%", status.status.param_70);
+    if let Ok(status) = status {
+        info!("battery present: {}", status.status.param_1);
+        info!("battery level: {}%", status.status.param_70);
+    } else {
+        warn!("Failed to get camera status");
+    }
 }
 
 pub async fn download_file(
